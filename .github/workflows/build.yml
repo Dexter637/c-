@@ -42,3 +42,9 @@
 	         dir
 	         echo "Environment Variables:"
 	         printenv
+	  	   - name: Debug Information
+	     run: |
+	       echo "Listing directory contents..."
+	       dir
+	       echo "Environment Variables:"
+	       printenv
