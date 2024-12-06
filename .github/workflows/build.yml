@@ -1,0 +1,38 @@
+	name: Build Qt Deploy Tool
+	on:
+	push:
+	  branches:
+	    - main
+	jobs:
+	build:
+	  runs-on: windows-latest
+	  steps:
+	    - name: Checkout code
+	      uses: actions/checkout@v2
+	    - name: Install Qt
+	      run: |
+	        choco install qt --version=5.15.2.0
+	        echo "Qt5_DIR=C:\\Qt\\5.15.2\\msvc2019_64\\lib\\cmake\\Qt5" | Out-File -FilePath $env:GITHUB_ENV -Append
+	    - name: Build the project
+	      run: |
+	        qmake
+	        jom
+	        # 或者使用 nmake 或 mingw32-make，取决于您的项目配置
+	    - name: Create artifact
+	      uses: actions/create-release@v1
+	      env:
+	        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+	      with:
+	        tag_name: ${{ github.ref }}
+	        release_name: Release ${{ github.ref }}
+	        draft: false
+	        prerelease: false
+	    - name: Upload artifact
+	      uses: actions/upload-release-asset@v1
+	      env:
+	        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+	      with:
+	        upload_url: ${{ steps.create_release.outputs.upload_url }}
+	        asset_path: ./path/to/your/deploy_tool.exe
+	        asset_name: deploy_tool.exe
+	        asset_content_type: application/octet-stream
