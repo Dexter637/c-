@@ -1,50 +1,46 @@
-	name: Build Qt Deploy Tool
-	on:
-	 push:
-	   branches:
-	     - main
-	jobs:
-	 build:
-	   runs-on: windows-latest
-	   steps:
-	     - name: Checkout code
-	       uses: actions/checkout@v2
-	     - name: Install Qt
-	       run: |
-	         choco install qt --version=5.15.2.0
-	         echo "Qt5_DIR=C:\\Qt\\5.15.2\\msvc2019_64\\lib\\cmake\\Qt5" | Out-File -FilePath $env:GITHUB_ENV -Append
-	     - name: Build the project
-	       run: |
-	         qmake
-	         jom
-	         # 或者使用 nmake 或 mingw32-make，取决于您的项目配置
-	     - name: Create artifact
-	       uses: actions/create-release@v1
-	       env:
-	         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-	       with:
-	         tag_name: ${{ github.ref }}
-	         release_name: Release ${{ github.ref }}
-	         draft: false
-	         prerelease: false
-	     - name: Upload artifact
-	       uses: actions/upload-release-asset@v1
-	       env:
-	         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-	       with:
-	         upload_url: ${{ steps.create_release.outputs.upload_url }}
-	         asset_path: ./path/to/your/deploy_tool.exe
-	         asset_name: deploy_tool.exe
-	         asset_content_type: application/octet-stream
-	     - name: Debug Information
-	       run: |
-	         echo "Listing directory contents..."
-	         dir
-	         echo "Environment Variables:"
-	         printenv
-	  	   - name: Debug Information
-	     run: |
-	       echo "Listing directory contents..."
-	       dir
-	       echo "Environment Variables:"
-	       printenv
+name: Build and Package DeployTool
+
+on:
+  push:
+    branches:
+      - main  # 可以根据实际情况修改触发工作流的分支，比如'master'等
+
+jobs:
+  build_and_package:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: true  # 如果项目包含子模块，添加此参数以确保子模块也被拉取
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '5.15.2'  # 根据实际使用的Qt版本进行修改
+        platform: win64
+        dir: ${{ github.workspace }}/Qt
+
+    - name: Configure build environment
+      shell: powershell
+      run: |
+        $env:PATH += ";${{ github.workspace }}/Qt/5.15.2/msvc2019_64/bin"  # 根据实际安装的Qt版本和编译器修改路径
+        [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+
+    - name: Build the project
+      shell: powershell
+      run: |
+        qmake
+        nmake  # 如果项目使用的是 MinGW 编译器，则替换为'mingw32-make'
+
+    - name: Package application with windeployqt
+      shell: powershell
+      run: |
+        windeployqt --dir release --force DeployTool.exe  # 假设可执行文件名为DeployTool.exe，根据实际情况修改文件名
+        Compress-Archive -Path release/* -DestinationPath DeployTool.zip  # 将打包后的文件压缩为一个 zip 文件方便分发
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: DeployTool
+        path: DeployTool.zip  # 上传刚才压缩好的文件作为构建产物
