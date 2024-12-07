@@ -7,18 +7,18 @@ on:
 
 jobs:
   build_and_package:
-    runs-on: windows-latest
+    runs-on: windows-latest  # 使用最新的 Windows runner
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        submodules: true
+        submodules: true  # 如果有子模块，确保拉取子模块
 
     - name: Setup Cpp (C++ / C)
       uses: aminya/setup-cpp@v0.37.0
       with:
-        msvc: '14.2'
+        msvc: '14.3'  # 使用更高版本的 MSVC（例如 14.3 或更高）
         cmake: '3.21.0'
         ninja: '1.10.0'
         conan: '1.36.0'
@@ -27,7 +27,14 @@ jobs:
     - name: Install Visual Studio 2022 Build Tools
       uses: microsoft/setup-msbuild@v1
       with:
-        vs-version: '17.0'  # 指定 Visual Studio 2022 版本
+        vs-version: '17.0'  # 安装 Visual Studio 2022
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '5.15.2'
+        platform: win64
+        dir: ${{ github.workspace }}/build/Qt
 
     - name: Set up Visual Studio 2022 build environment
       shell: powershell
@@ -43,13 +50,6 @@ jobs:
           Write-Host "VsDevCmd.bat not found."
           exit 1
         }
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '5.15.2'
-        platform: win64
-        dir: ${{ github.workspace }}/build/Qt
 
     - name: Build the project
       shell: powershell
