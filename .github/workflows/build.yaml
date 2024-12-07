@@ -48,7 +48,7 @@ jobs:
         $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
         [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
 
-    # 6. Build the project using qmake and nmake
+        # 6. Build the project using qmake and nmake
     - name: Build the project
       shell: powershell
       run: |
@@ -57,7 +57,7 @@ jobs:
           qmake .\DeployTool.pro -o ..\build\Makefile  # 使用完整路径来调用 qmake
           nmake -C ..\build  # 使用 nmake 构建项目（Visual Studio 环境下使用 nmake）
         } else {
-          Write-Host "DeployTool.pro 文件未找到，请检查路径。"
+          Write-Host "DeployTool.pro 文件未找到，请检查路径。"  # 确保字符串的引号正确
           exit 1
         }
 
