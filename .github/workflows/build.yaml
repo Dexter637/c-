@@ -15,10 +15,10 @@ jobs:
       with:
         submodules: true  # Ensure submodules are also checked out if your project includes them
 
-    - name: Install Visual Studio 2019 (MSBuild setup)
+    - name: Install Visual Studio 2022 and Build Tools
       uses: microsoft/setup-msbuild@v1
       with:
-        vs-version: '16.0'  # Specify Visual Studio version (for 2019, use '16.0')
+        vs-version: '17.0'  # Specify Visual Studio version (for 2022, use '17.0')
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
@@ -27,7 +27,7 @@ jobs:
         platform: win64
         dir: ${{ github.workspace }}/build/Qt  # Install Qt to the build/Qt directory
 
-    - name: Set up Visual Studio build environment
+    - name: Set up Visual Studio 2022 build environment
       shell: powershell
       run: |
         # Use vswhere to find the path of the latest installed Visual Studio version
@@ -52,16 +52,28 @@ jobs:
         # Verify if cl and nmake are available
         Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
         try {
-          cl.exe /? | Out-Null
-          Write-Host "cl compiler is available."
+          # Ensure cl.exe can be found by checking its location
+          $clPath = Get-Command cl.exe
+          if ($clPath) {
+            Write-Host "cl compiler is available at: $($clPath.Path)"
+          } else {
+            Write-Host "cl compiler is NOT available."
+            exit 1
+          }
         } catch {
           Write-Host "cl compiler is NOT available. Please ensure Visual Studio is set up correctly."
           exit 1
         }
 
         try {
-          nmake /? | Out-Null
-          Write-Host "nmake build tool is available."
+          # Ensure nmake.exe can be found by checking its location
+          $nmakePath = Get-Command nmake.exe
+          if ($nmakePath) {
+            Write-Host "nmake build tool is available at: $($nmakePath.Path)"
+          } else {
+            Write-Host "nmake build tool is NOT available."
+            exit 1
+          }
         } catch {
           Write-Host "nmake build tool is NOT available. Please ensure Visual Studio is set up correctly."
           exit 1
