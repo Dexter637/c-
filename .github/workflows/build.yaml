@@ -3,7 +3,7 @@ name: Build and Package DeployTool
 on:
   push:
     branches:
-      - main  # 可以根据实际情况修改触发工作流的分支，比如 'master' 等
+      - main  # 根据实际情况修改触发工作流的分支，比如 'master'
 
 jobs:
   build_and_package:
@@ -16,11 +16,12 @@ jobs:
       with:
         submodules: true  # 如果项目包含子模块，添加此参数以确保子模块也被拉取
 
-    # 2. Install Visual Studio 2019
+    # 2. Install Visual Studio 2019 (ensure C++ build tools are installed)
     - name: Install Visual Studio 2019
       uses: microsoft/setup-msbuild@v1
       with:
         vs-version: '16.0'  # 安装 Visual Studio 2019
+        msbuild-args: "/p:Platform=x64"
 
     # 3. Create build directory
     - name: Create build directory
@@ -46,28 +47,33 @@ jobs:
         # 添加 Qt 编译器路径到 PATH 环境变量
         $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
         [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
-      
+
     # 6. Build the project using qmake and nmake
     - name: Build the project
       shell: powershell
       run: |
-        cd ${{ github.workspace }}
-        qmake DeployTool.pro -o build/Makefile  # 使用 qmake 配置项目
-        nmake -C build  # 使用 nmake 构建项目（Visual Studio 环境下使用 nmake）
+        cd ${{ github.workspace }}/.github/workflows  # 进入正确的目录
+        if (Test-Path "DeployTool.pro") {
+          qmake .\DeployTool.pro -o ..\build\Makefile  # 使用完整路径来调用 qmake
+          nmake -C ..\build  # 使用 nmake 构建项目（Visual Studio 环境下使用 nmake）
+        } else {
+          Write-Host "DeployTool.pro 文件未找到，请检查路径。"
+          exit 1
+        }
 
     # 7. Package application with windeployqt
     - name: Package application with windeployqt
       shell: powershell
       run: |
-        windeployqt --dir build/release --force build/DeployTool.exe  # 使用 windeployqt 打包应用
-        Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip  # 压缩文件
+        windeployqt --dir ..\build\release --force ..\build\DeployTool.exe  # 使用 windeployqt 打包应用
+        Compress-Archive -Path ..\build\release\* -DestinationPath ..\build\DeployTool.zip  # 压缩文件
 
     # 8. Upload artifact
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: DeployTool
-        path: build/DeployTool.zip  # 上传压缩文件
+        path: ..\build\DeployTool.zip  # 上传压缩文件
 
     # 9. Check build result
     - name: Check build result
