@@ -3,42 +3,27 @@ name: Build and Package DeployTool
 on:
   push:
     branches:
-      - main
+      - main  # Trigger the workflow on pushing to the 'main' branch
 
 jobs:
   build_and_package:
-    runs-on: ubuntu-latest  # 运行在 Ubuntu 环境中，因为 Docker 是跨平台的，Ubuntu 也支持 Docker
+    runs-on: ubuntu-latest  # 可以选择 ubuntu 或 windows，根据你的需求
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: Set up Docker build environment
-      run: |
-        docker build -t deploytool-build-env .  # 使用当前目录下的 Dockerfile 创建镜像
-
-    - name: Run build inside Docker container
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/workspace deploytool-build-env powershell -Command "
-          cd /workspace/.github/workflows
-          if (Test-Path 'DeployTool.pro') {
-            qmake .\DeployTool.pro -o ..\build\Makefile  # 使用 qmake 生成 Makefile
-            nmake -C ..\build  # 使用 nmake 进行构建
-          } else {
-            Write-Host 'DeployTool.pro file not found. Please check the path.'
-            exit 1
-          }
-        "
-
-    - name: Package application with windeployqt
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/workspace deploytool-build-env powershell -Command "
-          windeployqt --dir build/release --force build/DeployTool.exe
-          Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip
-        "
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
       with:
-        name: DeployTool
-        path: build/DeployTool.zip
+        submodules: true  # 确保检出所有子模块，如果项目包含子模块
+
+    - name: Set up Docker Build Environment
+      uses: addnab/docker-run-action@v3
+      with:
+        image: docker://your-docker-image  # 使用你构建的 Docker 镜像，替换为你自己的镜像
+        options: --rm  # 自动清理容器
+
+    - name: Build project in Docker container
+      run: |
+        # 使用 Dockerfile 构建镜像
+        docker build -t my-qt-app .  # 构建 Docker 镜像，my-qt-app 为镜像名称
+        # 运行构建命令
+        docker run --rm my-qt-app  # 在容器中运行构建命令，确保容器结束后被移除
