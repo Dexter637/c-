@@ -34,21 +34,25 @@ jobs:
         $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
         Write-Host "Found Visual Studio at: $vsPath"
         
-        # Run the VsDevCmd.bat script to set up the environment
+        # Run the VsDevCmd.bat script to set up the environment using cmd.exe
         $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
         
         if (Test-Path $vsDevCmdPath) {
-          & $vsDevCmdPath  # This sets up the Visual Studio command-line environment
+          # Run VsDevCmd.bat via cmd.exe to set up the environment
+          cmd /c $vsDevCmdPath
           Write-Host "Visual Studio environment setup complete."
         } else {
           Write-Host "VsDevCmd.bat not found at expected location."
           exit 1
         }
 
-        # Add Qt to PATH
-        $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
-        Write-Host "Qt and Visual Studio environment setup complete."
+        # Output the PATH to ensure it's set correctly
+        Write-Host "Current PATH: $env:PATH"
 
+        # Add Qt to PATH manually in case it's needed
+        $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
+        Write-Host "Qt added to PATH."
+        
         # Verify if cl and nmake are available
         Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
         try {
