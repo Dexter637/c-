@@ -31,19 +31,30 @@ jobs:
       shell: powershell
       run: |
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"  # 修改PATH环境变量配置，指向build/Qt下的bin目录
+        # 这里添加mingw32-make所在路径到PATH环境变量（假设mingw安装在C:\mingw目录下，按实际安装情况调整路径）
+        $env:PATH += ";C:\mingw\bin"
         [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+
     - name: Build the project
       shell: powershell
       run: |
-        qmake -o build/  # 通过 -o 参数指定构建输出目录为build，确保生成的文件进入build目录
-        nmake -f build/Makefile  # 指定在build目录下查找Makefile进行构建，如果是mingw32-make同理，确保操作都在build目录相关环境下
+        qmake your_project_name.pro -o build/Makefile  # 根据项目的.pro文件生成Makefile并输出到build目录，确保your_project_name.pro按实际项目的.pro文件名替换
+        mingw32-make -C build  # 使用mingw32-make并指定在build目录下进行构建，-C参数用于切换到指定目录后执行构建命令
+
     - name: Package application with windeployqt
       shell: powershell
       run: |
-        windeployqt --dir build/release --force build/DeployTool.exe  # 修改相关文件路径为build目录下的对应路径
+        windeployqt --dir build/release --force build/DeployTool.exe  # 确保windeployqt操作的可执行文件在build目录下
         Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip  # 压缩文件也放在build目录下
+
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: DeployTool
         path: build/DeployTool.zip  # 上传build目录下的压缩文件
+
+    - name: Check build result
+      if: steps['Build the project'].outcome!= 'success'
+      run: |
+        echo "项目构建失败，请检查构建日志以查找原因。"
+        exit 1
