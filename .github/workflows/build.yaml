@@ -3,27 +3,23 @@ name: Build and Package DeployTool
 on:
   push:
     branches:
-      - main  # 根据实际情况修改触发工作流的分支，比如 'master'
+      - main  # Trigger the workflow on pushing to the 'main' branch
 
 jobs:
   build_and_package:
-    runs-on: windows-latest  # 使用 Windows 最新版本环境
+    runs-on: windows-latest  # Run on the latest Windows runner
 
     steps:
-    # 1. Checkout code
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        submodules: true  # 如果项目包含子模块，添加此参数以确保子模块也被拉取
+        submodules: true  # Ensure submodules are also checked out if your project includes them
 
-    # 2. Install Visual Studio 2019 (ensure C++ build tools are installed)
     - name: Install Visual Studio 2019
       uses: microsoft/setup-msbuild@v1
       with:
-        vs-version: '16.0'  # 安装 Visual Studio 2019
-        msbuild-args: "/p:Platform=x64"
+        vs-version: '16.0'
 
-    # 3. Create build directory
     - name: Create build directory
       shell: powershell
       run: |
@@ -31,53 +27,49 @@ jobs:
           New-Item -ItemType Directory -Path build -Force
         }
 
-    # 4. Install Qt
-    - name: Install Qt 5.15.2
+    - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
         version: '5.15.2'
         platform: win64
-        dir: ${{ github.workspace }}/build/Qt  # Qt 安装目录
+        dir: ${{ github.workspace }}/build/Qt  # Install Qt to the build/Qt directory
 
-    # 5. Configure build environment
     - name: Configure build environment
       shell: powershell
       run: |
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
-        # 添加 Qt 编译器路径到 PATH 环境变量
         $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
         [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
 
-        # 6. Build the project using qmake and nmake
     - name: Build the project
       shell: powershell
       run: |
-        cd ${{ github.workspace }}/.github/workflows  # 进入正确的目录
+        Write-Host "Current working directory: $(pwd)"  # Output current directory
+        cd ${{ github.workspace }}/.github/workflows  # Navigate to the correct directory
         if (Test-Path "DeployTool.pro") {
-          qmake .\DeployTool.pro -o ..\build\Makefile  # 使用完整路径来调用 qmake
-          nmake -C ..\build  # 使用 nmake 构建项目（Visual Studio 环境下使用 nmake）
+          Write-Host "DeployTool.pro file found, running qmake..."
+          qmake .\DeployTool.pro -o ..\build\Makefile  # Generate Makefile using qmake
+          Write-Host "Running nmake to build the project..."
+          nmake -C ..\build  # Build project using nmake
         } else {
-          Write-Host "DeployTool.pro 文件未找到，请检查路径。"  # 确保字符串的引号正确
-          exit 1
+          Write-Host "DeployTool.pro file not found. Please check the path."
+          exit 1  # Exit with error code if the .pro file is not found
         }
 
-    # 7. Package application with windeployqt
     - name: Package application with windeployqt
       shell: powershell
       run: |
-        windeployqt --dir ..\build\release --force ..\build\DeployTool.exe  # 使用 windeployqt 打包应用
-        Compress-Archive -Path ..\build\release\* -DestinationPath ..\build\DeployTool.zip  # 压缩文件
+        windeployqt --dir build/release --force build/DeployTool.exe
+        Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip
 
-    # 8. Upload artifact
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: DeployTool
-        path: ..\build\DeployTool.zip  # 上传压缩文件
+        path: build/DeployTool.zip
 
-    # 9. Check build result
     - name: Check build result
       if: steps['Build the project'].outcome != 'success'
       run: |
-        echo "项目构建失败，请检查构建日志以查找原因。"
+        echo "Build failed, please check the logs for details."
         exit 1
