@@ -3,61 +3,75 @@ name: Build and Package DeployTool
 on:
   push:
     branches:
-      - main  # 可以根据实际情况修改触发工作流的分支，比如'master'等
+      - main  # 可以根据实际情况修改触发工作流的分支，比如 'master' 等
 
 jobs:
   build_and_package:
-    runs-on: windows-latest
+    runs-on: windows-latest  # 使用 Windows 最新版本环境
+
     steps:
+    # 1. Checkout code
     - name: Checkout code
       uses: actions/checkout@v3
       with:
         submodules: true  # 如果项目包含子模块，添加此参数以确保子模块也被拉取
 
-    - name: Install Visual Studio 2019  # 添加安装Visual Studio 2019的步骤（可根据实际兼容性需求调整版本）
+    # 2. Install Visual Studio 2019
+    - name: Install Visual Studio 2019
       uses: microsoft/setup-msbuild@v1
       with:
-        vs-version: '16.0'
+        vs-version: '16.0'  # 安装 Visual Studio 2019
 
+    # 3. Create build directory
     - name: Create build directory
       shell: powershell
       run: |
         if (!(Test-Path -Path build)) {
           New-Item -ItemType Directory -Path build -Force
         }
-    - name: Install Qt
+
+    # 4. Install Qt
+    - name: Install Qt 5.15.2
       uses: jurplel/install-qt-action@v3
       with:
         version: '5.15.2'
         platform: win64
-        dir: ${{ github.workspace }}/build/Qt  # 修改Qt安装目录为build/Qt
+        dir: ${{ github.workspace }}/build/Qt  # Qt 安装目录
 
+    # 5. Configure build environment
     - name: Configure build environment
       shell: powershell
       run: |
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
-        # 添加cl编译器所在路径到PATH环境变量（假设Visual Studio 2019安装在默认路径下，按实际安装情况调整）
+        # 添加 Qt 编译器路径到 PATH 环境变量
         $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
         [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+      
+    # 6. Build the project using qmake and nmake
     - name: Build the project
       shell: powershell
       run: |
-        cd ${{ github.workspace }}/.github/workflows/
-        qmake your_project_name.pro -o build/Makefile
-        nmake -C build  # 将mingw32-make替换为nmake，用于在Visual Studio环境下构建
+        cd ${{ github.workspace }}
+        qmake DeployTool.pro -o build/Makefile  # 使用 qmake 配置项目
+        nmake -C build  # 使用 nmake 构建项目（Visual Studio 环境下使用 nmake）
+
+    # 7. Package application with windeployqt
     - name: Package application with windeployqt
       shell: powershell
       run: |
-        windeployqt --dir build/release --force build/DeployTool.exe  # 确保windeployqt操作的可执行文件在build目录下
-        Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip  # 压缩文件也放在build目录下
+        windeployqt --dir build/release --force build/DeployTool.exe  # 使用 windeployqt 打包应用
+        Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip  # 压缩文件
+
+    # 8. Upload artifact
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: DeployTool
-        path: build/DeployTool.zip  # 上传build目录下的压缩文件
+        path: build/DeployTool.zip  # 上传压缩文件
 
+    # 9. Check build result
     - name: Check build result
-      if: steps['Build the project'].outcome!= 'success'
+      if: steps['Build the project'].outcome != 'success'
       run: |
         echo "项目构建失败，请检查构建日志以查找原因。"
         exit 1
