@@ -45,9 +45,27 @@ jobs:
           exit 1
         }
 
-        # Set PATH to include Qt
+        # Add Qt to PATH
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
         Write-Host "Qt and Visual Studio environment setup complete."
+
+        # Verify if cl and nmake are available
+        Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
+        try {
+          cl.exe /? | Out-Null
+          Write-Host "cl compiler is available."
+        } catch {
+          Write-Host "cl compiler is NOT available. Please ensure Visual Studio is set up correctly."
+          exit 1
+        }
+
+        try {
+          nmake /? | Out-Null
+          Write-Host "nmake build tool is available."
+        } catch {
+          Write-Host "nmake build tool is NOT available. Please ensure Visual Studio is set up correctly."
+          exit 1
+        }
 
     - name: Build the project
       shell: powershell
