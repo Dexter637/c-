@@ -3,103 +3,39 @@ name: Build and Package DeployTool
 on:
   push:
     branches:
-      - main  # Trigger the workflow on pushing to the 'main' branch
+      - main
 
 jobs:
   build_and_package:
-    runs-on: windows-latest  # Use the latest Windows runner provided by GitHub
+    runs-on: ubuntu-latest  # 运行在 Ubuntu 环境中，因为 Docker 是跨平台的，Ubuntu 也支持 Docker
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      with:
-        submodules: true  # Ensure submodules are also checked out if your project includes them
 
-    - name: Install Visual Studio 2022 and Build Tools
-      uses: microsoft/setup-msbuild@v1
-      with:
-        vs-version: '17.0'  # Specify Visual Studio version (for 2022, use '17.0')
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '5.15.2'
-        platform: win64
-        dir: ${{ github.workspace }}/build/Qt  # Install Qt to the build/Qt directory
-
-    - name: Set up Visual Studio 2022 build environment
-      shell: powershell
+    - name: Set up Docker build environment
       run: |
-        # Use vswhere to find the path of the latest installed Visual Studio version
-        $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
-        Write-Host "Found Visual Studio at: $vsPath"
-        
-        # Manually add Visual Studio tools to PATH
-        $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
-        if (Test-Path $vsDevCmdPath) {
-          Write-Host "Running VsDevCmd.bat..."
-          cmd /c $vsDevCmdPath  # Run VsDevCmd.bat via cmd to set up environment
-          Write-Host "Visual Studio environment setup complete."
-        } else {
-          Write-Host "VsDevCmd.bat not found at expected location."
-          exit 1
-        }
+        docker build -t deploytool-build-env .  # 使用当前目录下的 Dockerfile 创建镜像
 
-        # Manually check if cl and nmake are available
-        Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
-        
-        $clPath = Get-Command cl.exe -ErrorAction SilentlyContinue
-        if ($clPath) {
-          Write-Host "cl compiler is available at: $($clPath.Path)"
-        } else {
-          Write-Host "cl compiler is NOT available. Attempting to add manually..."
-          # Manually find cl.exe and add it to the PATH if necessary
-          $clExePath = Get-ChildItem -Path (Join-Path $vsPath "VC\Tools\MSVC") -Recurse -Filter "cl.exe" | Select-Object -First 1
-          if ($clExePath) {
-            Write-Host "Manually adding cl.exe to PATH: $($clExePath.DirectoryName)"
-            $env:PATH += ";$($clExePath.DirectoryName)"
+    - name: Run build inside Docker container
+      run: |
+        docker run --rm -v ${{ github.workspace }}:/workspace deploytool-build-env powershell -Command "
+          cd /workspace/.github/workflows
+          if (Test-Path 'DeployTool.pro') {
+            qmake .\DeployTool.pro -o ..\build\Makefile  # 使用 qmake 生成 Makefile
+            nmake -C ..\build  # 使用 nmake 进行构建
           } else {
-            Write-Host "cl.exe not found."
+            Write-Host 'DeployTool.pro file not found. Please check the path.'
             exit 1
           }
-        }
-
-        $nmakePath = Get-Command nmake.exe -ErrorAction SilentlyContinue
-        if ($nmakePath) {
-          Write-Host "nmake build tool is available at: $($nmakePath.Path)"
-        } else {
-          Write-Host "nmake build tool is NOT available. Attempting to add manually..."
-          # Manually find nmake.exe and add it to the PATH if necessary
-          $nmakePath = Join-Path $vsPath 'Common7\Tools\nmake.exe'
-          if (Test-Path $nmakePath) {
-            Write-Host "Manually adding nmake.exe to PATH: $nmakePath"
-            $env:PATH += ";$nmakePath"
-          } else {
-            Write-Host "nmake.exe not found."
-            exit 1
-          }
-        }
-
-    - name: Build the project
-      shell: powershell
-      run: |
-        Write-Host "Current working directory: $(pwd)"  # Output current directory
-        cd ${{ github.workspace }}/.github/workflows  # Navigate to the correct directory
-        if (Test-Path "DeployTool.pro") {
-          Write-Host "DeployTool.pro file found, running qmake..."
-          qmake .\DeployTool.pro -o ..\build\Makefile  # Generate Makefile using qmake
-          Write-Host "Running nmake to build the project..."
-          nmake -C ..\build  # Build project using nmake
-        } else {
-          Write-Host "DeployTool.pro file not found. Please check the path."
-          exit 1  # Exit with error code if the .pro file is not found
-        }
+        "
 
     - name: Package application with windeployqt
-      shell: powershell
       run: |
-        windeployqt --dir build/release --force build/DeployTool.exe
-        Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip
+        docker run --rm -v ${{ github.workspace }}:/workspace deploytool-build-env powershell -Command "
+          windeployqt --dir build/release --force build/DeployTool.exe
+          Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip
+        "
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
