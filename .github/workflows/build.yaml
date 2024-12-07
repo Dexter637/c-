@@ -52,12 +52,12 @@ jobs:
         # Add Qt to PATH manually in case it's needed
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
         Write-Host "Qt added to PATH."
-        
-        # Verify if cl and nmake are available
+
+        # Manually verify the compiler and tools are in the PATH
         Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
         try {
           # Ensure cl.exe can be found by checking its location
-          $clPath = Get-Command cl.exe
+          $clPath = Get-Command cl.exe -ErrorAction SilentlyContinue
           if ($clPath) {
             Write-Host "cl compiler is available at: $($clPath.Path)"
           } else {
@@ -71,7 +71,7 @@ jobs:
 
         try {
           # Ensure nmake.exe can be found by checking its location
-          $nmakePath = Get-Command nmake.exe
+          $nmakePath = Get-Command nmake.exe -ErrorAction SilentlyContinue
           if ($nmakePath) {
             Write-Host "nmake build tool is available at: $($nmakePath.Path)"
           } else {
