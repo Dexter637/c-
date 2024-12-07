@@ -18,12 +18,31 @@ jobs:
     - name: Setup Cpp (C++ / C)
       uses: aminya/setup-cpp@v0.37.0
       with:
-        msvc: '14.2'  # 指定 MSVC 版本
-        cmake: '3.21.0'  # 安装 CMake
-        make: '4.3'  # 安装 Make 工具
-        conan: '1.36.0'  # 安装 Conan 依赖管理工具
-        ninja: '1.10.0'  # 安装 Ninja 构建工具
-        timeout: 30  # 安装工具的超时时间
+        msvc: '14.2'
+        cmake: '3.21.0'
+        ninja: '1.10.0'
+        conan: '1.36.0'
+        timeout: 30
+
+    - name: Install Visual Studio 2022 Build Tools
+      uses: microsoft/setup-msbuild@v1
+      with:
+        vs-version: '17.0'  # 指定 Visual Studio 2022 版本
+
+    - name: Set up Visual Studio 2022 build environment
+      shell: powershell
+      run: |
+        $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+        Write-Host "Found Visual Studio at: $vsPath"
+        $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
+        if (Test-Path $vsDevCmdPath) {
+          Write-Host "Running VsDevCmd.bat..."
+          cmd /c $vsDevCmdPath  # 设置开发环境
+          Write-Host "Visual Studio environment setup complete."
+        } else {
+          Write-Host "VsDevCmd.bat not found."
+          exit 1
+        }
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
@@ -31,39 +50,6 @@ jobs:
         version: '5.15.2'
         platform: win64
         dir: ${{ github.workspace }}/build/Qt
-
-    - name: Set up Visual Studio 2022 build environment
-      shell: powershell
-      run: |
-        # 使用 vswhere 查找 Visual Studio 安装路径
-        $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
-        Write-Host "Found Visual Studio at: $vsPath"
-        
-        # 手动运行 VsDevCmd.bat 设置开发环境
-        $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
-        if (Test-Path $vsDevCmdPath) {
-          Write-Host "Running VsDevCmd.bat..."
-          cmd /c $vsDevCmdPath
-          Write-Host "Visual Studio environment setup complete."
-        } else {
-          Write-Host "VsDevCmd.bat not found."
-          exit 1
-        }
-        # 检查编译器和构建工具是否可用
-        $clPath = Get-Command cl.exe -ErrorAction SilentlyContinue
-        if ($clPath) {
-          Write-Host "cl compiler is available at: $($clPath.Path)"
-        } else {
-          Write-Host "cl compiler is NOT available."
-          exit 1
-        }
-        $nmakePath = Get-Command nmake.exe -ErrorAction SilentlyContinue
-        if ($nmakePath) {
-          Write-Host "nmake build tool is available at: $($nmakePath.Path)"
-        } else {
-          Write-Host "nmake build tool is NOT available."
-          exit 1
-        }
 
     - name: Build the project
       shell: powershell
