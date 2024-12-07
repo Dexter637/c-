@@ -1,46 +1,35 @@
-name: Build and Package DeployTool
+name: Build and Test Qt5 Project
 
 on:
   push:
     branches:
-      - main  # 可以根据实际情况修改触发工作流的分支，比如'master'等
+      - main  # 可按需修改触发工作流的分支，比如'master'等
 
 jobs:
-  build_and_package:
-    runs-on: windows-latest
+  build_and_test:
+    runs-on: windows-latest  # 选择 Windows 环境，适配代码中 Windows 相关操作
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+
+    - name: Install Qt5
+      uses: jurplel/install-qt-action@v3  # 使用这个 action 来安装 Qt5，更方便，当然你也可以手动写安装步骤，类似 apt-get 安装在 Linux 下那样（参考之前给的示例中 Linux 安装 Qt5 依赖部分，Windows 可以通过 chocolatey 等方式安装）
       with:
-        submodules: true  # 如果项目包含子模块，添加此参数以确保子模块也被拉取
+        version: 5.15.2  # 修改为你实际使用的 Qt5 版本号
+        modules: [core, gui, widgets]  # 根据你的.pro 文件里引入的模块填写
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '5.15.2'  # 根据实际使用的Qt版本进行修改
-        platform: win64
-        dir: ${{ github.workspace }}/Qt
-
-    - name: Configure build environment
-      shell: powershell
+    - name: Build the project using qmake
       run: |
-        $env:PATH += ";${{ github.workspace }}/Qt/5.15.2/msvc2019_64/bin"  # 根据实际安装的Qt版本和编译器修改路径
-        [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+        qmake your_project_name.pro
+        nmake  # 在 Windows 下通常用 nmake 构建，如果你项目里配置了使用其他构建工具（如 mingw32-make 等）则替换这里的命令
 
-    - name: Build the project
-      shell: powershell
+    - name: Test the application (if applicable)
       run: |
-        qmake
-        nmake  # 如果项目使用的是 MinGW 编译器，则替换为'mingw32-make'
+       .\your_app_name.exe  # 运行生成的可执行文件进行测试，这里假设生成的可执行文件在当前目录下且叫 your_app_name.exe，按你实际生成的文件名和路径调整
 
-    - name: Package application with windeployqt
-      shell: powershell
-      run: |
-        windeployqt --dir release --force DeployTool.exe  # 假设可执行文件名为DeployTool.exe，根据实际情况修改文件名
-        Compress-Archive -Path release/* -DestinationPath DeployTool.zip  # 将打包后的文件压缩为一个 zip 文件方便分发
-
-    - name: Upload artifact
+    - name: Archive build artifacts (optional)
       uses: actions/upload-artifact@v3
       with:
-        name: DeployTool
-        path: DeployTool.zip  # 上传刚才压缩好的文件作为构建产物
+        name: build-artifacts
+        path: |
+          your_app_name.exe  # 这里替换为你实际生成可执行文件等构建产物所在的目录，如果就是项目根目录就像这样写，如果是在其他如 'build' 目录下，就写对应的相对路径
