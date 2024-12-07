@@ -12,10 +12,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    - name: Create build directory
+      run: |
+        if (!(Test-Path -Path build)) {  # 检查 build 目录是否存在，如果不存在
+          New-Item -ItemType Directory -Path build -Force  # 则创建该目录，-Force 参数表示若上级目录不存在也一并创建
+        }
+      shell: powershell
+
     - name: Install Qt5
       uses: jurplel/install-qt-action@v3  # 使用这个 action 来安装 Qt5，更方便，当然你也可以手动写安装步骤，类似 apt-get 安装在 Linux 下那样（参考之前给的示例中 Linux 安装 Qt5 依赖部分，Windows 可以通过 chocolatey 等方式安装）
       with:
-        version: 5.15.2  # 修改为你实际使用的 Qt5 版本号
+        version: "5.15.2"  # 修改为你实际使用的 Qt5 版本号
         modules: [core, gui, widgets]  # 根据你的.pro 文件里引入的模块填写
 
     - name: Build the project using qmake
@@ -25,7 +32,7 @@ jobs:
 
     - name: Test the application (if applicable)
       run: |
-      .\your_app_name.exe  # 运行生成的可执行文件进行测试，这里假设生成的可执行文件在当前目录下且叫 your_app_name.exe，按你实际生成的文件名和路径调整
+        Start-Process -FilePath build/your_app_name.exe -NoNewWindow -Wait
 
     - name: Archive build artifacts (optional)
       uses: actions/upload-artifact@v3
