@@ -1,5 +1,5 @@
 QT += core gui 
-TARGET = your_app_name
+TARGET = DeployTool
 CONFIG += c++11
 # 添加其他必要的 Qt 模块
 QT += widgets
