@@ -33,31 +33,28 @@ jobs:
         # Use vswhere to find the path of the latest installed Visual Studio version
         $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
         Write-Host "Found Visual Studio at: $vsPath"
-
-        # Run the VsDevCmd.bat script to set up the environment using cmd.exe
-        $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
         
+        # Manually add Visual Studio tools to PATH
+        $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
         if (Test-Path $vsDevCmdPath) {
-          # Run VsDevCmd.bat via cmd.exe to set up the environment
-          cmd /c $vsDevCmdPath
+          Write-Host "Running VsDevCmd.bat..."
+          cmd /c $vsDevCmdPath  # Run VsDevCmd.bat via cmd to set up environment
           Write-Host "Visual Studio environment setup complete."
         } else {
           Write-Host "VsDevCmd.bat not found at expected location."
           exit 1
         }
 
-        # Output the PATH to ensure it's set correctly
-        Write-Host "Current PATH: $env:PATH"
-
         # Manually check if cl and nmake are available
+        Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
+        
         $clPath = Get-Command cl.exe -ErrorAction SilentlyContinue
         if ($clPath) {
           Write-Host "cl compiler is available at: $($clPath.Path)"
         } else {
           Write-Host "cl compiler is NOT available. Attempting to add manually..."
           # Manually find cl.exe and add it to the PATH if necessary
-          $vsToolsPath = Join-Path $vsPath "VC\Tools\MSVC"
-          $clExePath = Get-ChildItem -Path $vsToolsPath -Recurse -Filter cl.exe | Select-Object -First 1
+          $clExePath = Get-ChildItem -Path (Join-Path $vsPath "VC\Tools\MSVC") -Recurse -Filter "cl.exe" | Select-Object -First 1
           if ($clExePath) {
             Write-Host "Manually adding cl.exe to PATH: $($clExePath.DirectoryName)"
             $env:PATH += ";$($clExePath.DirectoryName)"
