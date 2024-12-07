@@ -38,8 +38,9 @@ jobs:
     - name: Build the project
       shell: powershell
       run: |
-        qmake your_project_name.pro -o build/Makefile  # 根据项目的.pro文件生成Makefile并输出到build目录，确保your_project_name.pro按实际项目的.pro文件名替换
-        mingw32-make -C build  # 使用mingw32-make并指定在build目录下进行构建，-C参数用于切换到指定目录后执行构建命令
+        cd ${{ github.workspace }}/.github/workflows/  # 切换到文件所在的.github/workflows/目录
+        qmake your_project_name.pro -o build/Makefile
+        mingw32-make -C build
 
     - name: Package application with windeployqt
       shell: powershell
