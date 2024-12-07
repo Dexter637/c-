@@ -1,41 +1,49 @@
-name: Build and Test Qt5 Project
+name: Build and Package DeployTool
 
 on:
   push:
     branches:
-      - main  # 可按需修改触发工作流的分支，比如'master'等
+      - main  # 可以根据实际情况修改触发工作流的分支，比如'master'等
 
 jobs:
-  build_and_test:
-    runs-on: windows-latest  # 选择 Windows 环境，适配代码中 Windows 相关操作
+  build_and_package:
+    runs-on: windows-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        submodules: true  # 如果项目包含子模块，添加此参数以确保子模块也被拉取
 
     - name: Create build directory
-      run: |
-        if (!(Test-Path -Path build)) {  # 检查 build 目录是否存在，如果不存在
-          New-Item -ItemType Directory -Path build -Force  # 则创建该目录，-Force 参数表示若上级目录不存在也一并创建
-        }
       shell: powershell
-
-    - name: Install Qt5
-      uses: jurplel/install-qt-action@v3  # 使用这个 action 来安装 Qt5，更方便，当然你也可以手动写安装步骤，类似 apt-get 安装在 Linux 下那样（参考之前给的示例中 Linux 安装 Qt5 依赖部分，Windows 可以通过 chocolatey 等方式安装）
+      run: |
+        if (!(Test-Path -Path build)) {
+          New-Item -ItemType Directory -Path build -Force
+        }
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
       with:
-        version: "5.15.2"  # 修改为你实际使用的 Qt5 版本号
-        modules: [core, gui, widgets]  # 根据你的.pro 文件里引入的模块填写
+        version: '5.15.2'
+        platform: win64
+        dir: ${{ github.workspace }}/build/Qt  # 修改Qt安装目录为build/Qt
 
-    - name: Build the project using qmake
+    - name: Configure build environment
+      shell: powershell
       run: |
-        qmake your_project_name.pro
-        nmake  # 在 Windows 下通常用 nmake 构建，如果你项目里配置了使用其他构建工具（如 mingw32-make 等）则替换这里的版本
-
-    - name: Test the application (if applicable)
+        $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"  # 修改PATH环境变量配置，指向build/Qt下的bin目录
+        [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+    - name: Build the project
+      shell: powershell
       run: |
-        Start-Process -FilePath build/your_app_name.exe -NoNewWindow -Wait
-
-    - name: Archive build artifacts (optional)
+        qmake -o build/  # 通过 -o 参数指定构建输出目录为build，确保生成的文件进入build目录
+        nmake -f build/Makefile  # 指定在build目录下查找Makefile进行构建，如果是mingw32-make同理，确保操作都在build目录相关环境下
+    - name: Package application with windeployqt
+      shell: powershell
+      run: |
+        windeployqt --dir build/release --force build/DeployTool.exe  # 修改相关文件路径为build目录下的对应路径
+        Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip  # 压缩文件也放在build目录下
+    - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
-        name: build-artifacts
-        path: build/your_app_name.exe  # 直接写成普通字符串形式，这里假设生成的可执行文件就在当前目录下，如果实际在其他目录（比如有个build目录下），则写成相对路径，例如：build/your_app_name.exe
+        name: DeployTool
+        path: build/DeployTool.zip  # 上传build目录下的压缩文件
