@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_and_package:
-    runs-on: windows-latest  # Run on the latest Windows runner
+    runs-on: windows-latest  # Use the latest Windows runner provided by GitHub
 
     steps:
     - name: Checkout code
@@ -15,17 +15,10 @@ jobs:
       with:
         submodules: true  # Ensure submodules are also checked out if your project includes them
 
-    - name: Install Visual Studio 2019
+    - name: Install Visual Studio 2019 (MSBuild setup)
       uses: microsoft/setup-msbuild@v1
       with:
-        vs-version: '16.0'
-
-    - name: Create build directory
-      shell: powershell
-      run: |
-        if (!(Test-Path -Path build)) {
-          New-Item -ItemType Directory -Path build -Force
-        }
+        vs-version: '16.0'  # Specify Visual Studio version (for 2019, use '16.0')
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
@@ -34,21 +27,26 @@ jobs:
         platform: win64
         dir: ${{ github.workspace }}/build/Qt  # Install Qt to the build/Qt directory
 
-    - name: Set up Visual Studio environment
+    - name: Set up Visual Studio build environment
       shell: powershell
       run: |
-        # Run the Visual Studio environment setup script to set the correct PATH for `cl` and `nmake`
-        & "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\VsDevCmd.bat"  # This sets up the Visual Studio command-line environment
-        Write-Host "Visual Studio environment setup complete."
-
-    - name: Configure build environment
-      shell: powershell
-      run: |
-        $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
-        Write-Host "Qt environment setup complete."
+        # Use vswhere to find the path of the latest installed Visual Studio version
+        $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+        Write-Host "Found Visual Studio at: $vsPath"
         
-        # Optional: Print PATH to verify
-        Write-Host "Updated PATH: $env:PATH"
+        # Run the VsDevCmd.bat script to set up the environment
+        $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
+        
+        if (Test-Path $vsDevCmdPath) {
+          & $vsDevCmdPath  # This sets up the Visual Studio command-line environment
+          Write-Host "Visual Studio environment setup complete."
+        } else {
+          Write-Host "VsDevCmd.bat not found at expected location."
+          exit 1
+
+        # Set PATH to include Qt
+        $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
+        Write-Host "Qt and Visual Studio environment setup complete."
 
     - name: Build the project
       shell: powershell
@@ -76,9 +74,3 @@ jobs:
       with:
         name: DeployTool
         path: build/DeployTool.zip
-
-    - name: Check build result
-      if: steps['Build the project'].outcome != 'success'
-      run: |
-        echo "Build failed, please check the logs for details."
-        exit 1
