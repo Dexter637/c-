@@ -43,6 +43,7 @@ jobs:
         } else {
           Write-Host "VsDevCmd.bat not found at expected location."
           exit 1
+        }
 
         # Set PATH to include Qt
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
