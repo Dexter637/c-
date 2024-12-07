@@ -3,99 +3,89 @@ name: Build and Package DeployTool
 on:
   push:
     branches:
-      - main  # Trigger the workflow on pushing to the 'main' branch
+      - main
 
 jobs:
   build_and_package:
-    runs-on: windows-latest  # Use the latest Windows runner provided by GitHub
+    runs-on: windows-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        submodules: true  # Ensure submodules are also checked out if your project includes them
+        submodules: true
 
-    - name: Install Visual Studio 2022 and Build Tools
-      uses: microsoft/setup-msbuild@v1
+    - name: Setup Cpp (C++ / C)
+      uses: aminya/setup-cpp@v0.37.0
       with:
-        vs-version: '17.0'  # Specify Visual Studio version (for 2022, use '17.0')
+        msvc: '14.2'  # 指定 MSVC 版本
+        cmake: '3.21.0'  # 安装 CMake
+        make: '4.3'  # 安装 Make 工具
+        conan: '1.36.0'  # 安装 Conan 依赖管理工具
+        ninja: '1.10.0'  # 安装 Ninja 构建工具
+        timeout: 30  # 安装工具的超时时间
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
         version: '5.15.2'
         platform: win64
-        dir: ${{ github.workspace }}/build/Qt  # Install Qt to the build/Qt directory
+        dir: ${{ github.workspace }}/build/Qt
 
     - name: Set up Visual Studio 2022 build environment
       shell: powershell
       run: |
-        # Use vswhere to find the path of the latest installed Visual Studio version
+        # 使用 vswhere 查找 Visual Studio 安装路径
         $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
         Write-Host "Found Visual Studio at: $vsPath"
         
-        # Manually add Visual Studio tools to PATH
+        # 手动运行 VsDevCmd.bat 设置开发环境
         $vsDevCmdPath = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
         if (Test-Path $vsDevCmdPath) {
           Write-Host "Running VsDevCmd.bat..."
-          cmd /c $vsDevCmdPath  # Run VsDevCmd.bat via cmd to set up environment
+          cmd /c $vsDevCmdPath
           Write-Host "Visual Studio environment setup complete."
         } else {
-          Write-Host "VsDevCmd.bat not found at expected location."
+          Write-Host "VsDevCmd.bat not found."
           exit 1
         }
-        # Manually check if cl and nmake are available
-        Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
-        
+        # 检查编译器和构建工具是否可用
         $clPath = Get-Command cl.exe -ErrorAction SilentlyContinue
         if ($clPath) {
           Write-Host "cl compiler is available at: $($clPath.Path)"
         } else {
-          Write-Host "cl compiler is NOT available. Attempting to add manually..."
-          # Manually find cl.exe and add it to the PATH if necessary
-          $clExePath = Get-ChildItem -Path (Join-Path $vsPath "VC\Tools\MSVC") -Recurse -Filter "cl.exe" | Select-Object -First 1
-          if ($clExePath) {
-            Write-Host "Manually adding cl.exe to PATH: $($clExePath.DirectoryName)"
-            $env:PATH += ";$($clExePath.DirectoryName)"
-          } else {
-            Write-Host "cl.exe not found."
-            exit 1
-          }
+          Write-Host "cl compiler is NOT available."
+          exit 1
         }
         $nmakePath = Get-Command nmake.exe -ErrorAction SilentlyContinue
         if ($nmakePath) {
           Write-Host "nmake build tool is available at: $($nmakePath.Path)"
         } else {
-          Write-Host "nmake build tool is NOT available. Attempting to add manually..."
-          # Manually find nmake.exe and add it to the PATH if necessary
-          $nmakePath = Join-Path $vsPath 'Common7\Tools\nmake.exe'
-          if (Test-Path $nmakePath) {
-            Write-Host "Manually adding nmake.exe to PATH: $nmakePath"
-            $env:PATH += ";$nmakePath"
-          } else {
-            Write-Host "nmake.exe not found."
-            exit 1
-          }
+          Write-Host "nmake build tool is NOT available."
+          exit 1
         }
+
     - name: Build the project
       shell: powershell
       run: |
-        Write-Host "Current working directory: $(pwd)"  # Output current directory
-        cd ${{ github.workspace }}/.github/workflows  # Navigate to the correct directory
+        Write-Host "Current working directory: $(pwd)"
+        cd ${{ github.workspace }}/.github/workflows
         if (Test-Path "DeployTool.pro") {
           Write-Host "DeployTool.pro file found, running qmake..."
-          qmake .\DeployTool.pro -o ..\build\Makefile  # Generate Makefile using qmake
+          qmake .\DeployTool.pro -o ..\build\Makefile
           Write-Host "Running nmake to build the project..."
-          nmake -C ..\build  # Build project using nmake
+          nmake -C ..\build
         } else {
-          Write-Host "DeployTool.pro file not found. Please check the path."
-          exit 1  # Exit with error code if the .pro file is not found
+          Write-Host "DeployTool.pro file not found."
+          exit 1
         }
+
     - name: Package application with windeployqt
       shell: powershell
       run: |
         windeployqt --dir build/release --force build/DeployTool.exe
         Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip
+
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
