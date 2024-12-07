@@ -1,55 +1,51 @@
-ame: Build and Package DeployTool
- 
-on:
- push:
-   branches:
-     - main
- 
-jobs:
- build_and_package:
-   runs-on: windows-latest
-   steps:
-   - name: Checkout code
-     uses: actions/checkout@v3
-     with:
-       submodules: true
- 
-   - name: Install Visual Studio 2019
-     uses: microsoft/setup-msbuild@v1
-     with:
-       vs-version: '16.0'
- 
-   - name: Create build directory
-     shell: powershell
-     run: |
-       if (!(Test-Path -Path build)) {
-         New-Item -ItemType Directory -Path build -Force
-       }
- 
-   - name: Install Qt
-     uses: jurplel/install-qt-action@v3
-     with:
-       version: '5.15.2'
-       platform: win64
-       dir: ${{ github.workspace }}/build/Qt
- 
-   - name: Configure build environment
-     shell: powershell
-     run: |
-       $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
-       $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
-       [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Process)
- 
-   - name: Build the project
-     shell: powershell
-     run: |
-       cd ${{ github.workspace }}
-       qmake your_project_name.pro -o build/Makefile
-       nmake -C build
- 
-   - name: Package application with windeployqt
-     shell: powershell
-     run: |
-       windeployqt --dir build/release --force build/DeployTool.exe
-       Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip
- 
+	name: Build and Package DeployTool
+	on:
+	 push:
+	   branches:
+	     - main
+	jobs:
+	 build_and_package:
+	   runs-on: windows-latest
+	   steps:
+	     - name: Checkout code
+	       uses: actions/checkout@v3
+	       with:
+	         submodules: true
+	     - name: Install Visual Studio 2019
+	       uses: microsoft/setup-msbuild@v1
+	       with:
+	         vs-version: '16.0'
+	     - name: Create build directory
+	       shell: powershell
+	       run: |
+	         if (!(Test-Path -Path build)) {
+	           New-Item -ItemType Directory -Path build -Force
+	         }
+	     - name: Install Qt
+	       uses: jurplel/install-qt-action@v3
+	       with:
+	         version: '5.15.2'
+	         platform: win64
+	         dir: ${{ github.workspace }}/build/Qt
+	     - name: Configure build environment
+	       shell: powershell
+	       run: |
+	         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
+	         $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
+	         [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Process)
+	     - name: Build the project
+	       shell: powershell
+	       run: |
+	         cd ${{ github.workspace }}
+	         qmake your_project_name.pro -o build/Makefile
+	         nmake -C build
+	     - name: Package application with windeployqt
+	       shell: powershell
+	       run: |
+	         windeployqt --dir build/release --force build/DeployTool.exe
+	         Compress-Archive -Path build/release/* -DestinationPath build/DeployTool.zip
+	     - name: Upload artifact
+	       uses: actions/upload-artifact@v3
+	       with:
+	         name: DeployTool
+	         path: build/DeployTool.zip
