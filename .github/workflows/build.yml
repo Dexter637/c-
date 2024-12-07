@@ -14,6 +14,11 @@ jobs:
       with:
         submodules: true  # 如果项目包含子模块，添加此参数以确保子模块也被拉取
 
+    - name: Install Visual Studio 2019  # 添加安装Visual Studio 2019的步骤（可根据实际兼容性需求调整版本）
+      uses: microsoft/setup-msbuild@v1
+      with:
+        vs-version: '16.0'
+
     - name: Create build directory
       shell: powershell
       run: |
@@ -30,17 +35,17 @@ jobs:
     - name: Configure build environment
       shell: powershell
       run: |
-        $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"  # 修改PATH环境变量配置，指向build/Qt下的bin目录
-        # 这里添加mingw32-make所在路径到PATH环境变量（假设mingw安装在C:\mingw目录下，按实际安装情况调整路径）
-        $env:PATH += ";C:\mingw\bin"
+        $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
+        # 添加cl编译器所在路径到PATH环境变量（假设Visual Studio 2019安装在默认路径下，按实际安装情况调整）
+        $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
         [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
 
     - name: Build the project
       shell: powershell
       run: |
-        cd ${{ github.workspace }}/.github/workflows/  # 切换到文件所在的.github/workflows/目录
+        cd ${{ github.workspace }}/.github/workflows/
         qmake your_project_name.pro -o build/Makefile
-        mingw32-make -C build
+        nmake -C build  # 将mingw32-make替换为nmake，用于在Visual Studio环境下构建
 
     - name: Package application with windeployqt
       shell: powershell
