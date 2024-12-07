@@ -1,6 +1,6 @@
 QT += core gui 
 TARGET = DeployTool
-CONFIG += c++11
+CONFIG += c++17
 # 添加其他必要的 Qt 模块
 QT += widgets
 # 添加 manifest 文件
