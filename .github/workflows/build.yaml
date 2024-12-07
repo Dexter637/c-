@@ -53,34 +53,38 @@ jobs:
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
         Write-Host "Qt added to PATH."
 
-        # Manually verify the compiler and tools are in the PATH
-        Write-Host "Verifying if cl (compiler) and nmake (build tool) are available..."
-        try {
-          # Ensure cl.exe can be found by checking its location
-          $clPath = Get-Command cl.exe -ErrorAction SilentlyContinue
-          if ($clPath) {
-            Write-Host "cl compiler is available at: $($clPath.Path)"
+        # Manually check cl and nmake paths
+        $clPath = Get-Command cl.exe -ErrorAction SilentlyContinue
+        if ($clPath) {
+          Write-Host "cl compiler is available at: $($clPath.Path)"
+        } else {
+          Write-Host "cl compiler is NOT available. Attempting to add manually..."
+          # Manually find cl.exe and add it to the PATH if necessary
+          $vsToolsPath = Join-Path $vsPath "VC\Tools\MSVC"
+          $clExePath = Get-ChildItem -Path $vsToolsPath -Recurse -Filter cl.exe | Select-Object -First 1
+          if ($clExePath) {
+            Write-Host "Manually adding cl.exe to PATH: $($clExePath.DirectoryName)"
+            $env:PATH += ";$($clExePath.DirectoryName)"
           } else {
-            Write-Host "cl compiler is NOT available."
+            Write-Host "cl.exe not found."
             exit 1
           }
-        } catch {
-          Write-Host "cl compiler is NOT available. Please ensure Visual Studio is set up correctly."
-          exit 1
         }
 
-        try {
-          # Ensure nmake.exe can be found by checking its location
-          $nmakePath = Get-Command nmake.exe -ErrorAction SilentlyContinue
-          if ($nmakePath) {
-            Write-Host "nmake build tool is available at: $($nmakePath.Path)"
+        $nmakePath = Get-Command nmake.exe -ErrorAction SilentlyContinue
+        if ($nmakePath) {
+          Write-Host "nmake build tool is available at: $($nmakePath.Path)"
+        } else {
+          Write-Host "nmake build tool is NOT available. Attempting to add manually..."
+          # Manually find nmake.exe and add it to the PATH if necessary
+          $nmakePath = Join-Path $vsPath 'Common7\Tools\nmake.exe'
+          if (Test-Path $nmakePath) {
+            Write-Host "Manually adding nmake.exe to PATH: $nmakePath"
+            $env:PATH += ";$nmakePath"
           } else {
-            Write-Host "nmake build tool is NOT available."
+            Write-Host "nmake.exe not found."
             exit 1
           }
-        } catch {
-          Write-Host "nmake build tool is NOT available. Please ensure Visual Studio is set up correctly."
-          exit 1
         }
 
     - name: Build the project
