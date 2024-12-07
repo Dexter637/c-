@@ -34,12 +34,21 @@ jobs:
         platform: win64
         dir: ${{ github.workspace }}/build/Qt  # Install Qt to the build/Qt directory
 
+    - name: Set up Visual Studio environment
+      shell: powershell
+      run: |
+        # Run the Visual Studio environment setup script to set the correct PATH for `cl` and `nmake`
+        & "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\VsDevCmd.bat"  # This sets up the Visual Studio command-line environment
+        Write-Host "Visual Studio environment setup complete."
+
     - name: Configure build environment
       shell: powershell
       run: |
         $env:PATH += ";${{ github.workspace }}/build/Qt/5.15.2/msvc2019_64/bin"
-        $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64"
-        [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+        Write-Host "Qt environment setup complete."
+        
+        # Optional: Print PATH to verify
+        Write-Host "Updated PATH: $env:PATH"
 
     - name: Build the project
       shell: powershell
