@@ -18,17 +18,19 @@ DeployTool 是一个基于 Qt 框架的桌面应用程序，旨在帮助用户�
 2. **下载 DeployTool 源码**：从项目的代码仓库中获取 DeployTool 的源码。您可以使用 Git 克隆仓库，或者下载压缩包并解压到指定目录。
 
 3. **编译和构建**：使用 Qt Creator 或命令行工具（如 qmake 和 make）编译和构建 DeployTool 项目。
+   
+4. **直接运行**：或者下载package文件夹到本地，找到DeployTool.exe管理员运行即可
 
 ## 使用 DeployTool
 
 1. **启动 DeployTool**：构建成功后，运行 DeployTool 可执行文件。
 
-2. **查看日志**：在 DeployTool 的界面中，您将看到一个文本浏览器（QTextBrowser），用于显示部署过程中的日志信息。
+2. **查看日志**：在 DeployTool 的界面中，您将在命令行里看到程序的运行过程，用于显示部署过程中的日志信息。
 
-3. **点击部署**：点击“Deploy”按钮开始部署过程。DeployTool 将按照以下步骤自动执行：
+3. **点击部署**：DeployTool 将按照以下步骤自动执行：
 
-   - **下载 VS Code 安装包**：使用 PowerShell 从官方网站下载 VS Code 的稳定版安装包。
-   - **安装 VS Code**：静默安装 VS Code（/S 参数表示静默安装）。
+   - **下载 MINGW 安装包**：使用 PowerShell 从官方网站下载 MINGW 的稳定版安装包。
+   - **安装 VS Code：静默安装 VS Code（/S 参数表示静默安装）。
    - **安装 C++ 扩展**：使用 VS Code 的命令行接口安装 C++ 扩展（ms-vscode.cpptools）。
    - **设置环境变量**：将 VS Code 的 bin 目录添加到系统的 PATH 环境变量中。
 
