@@ -10,6 +10,12 @@ class SetupManager : public QObject
 public:
     explicit SetupManager(QObject *parent = nullptr);
     void startSetup();
+    void writeTasksJsonConfig();
+    void writeLaunchJsonConfig();
+    void writeSettingsJsonConfig();
+    void writeCppPropertiesJsonConfig();
+    void createVSCodeFolders();
+    void cleanTempFiles();
 private slots:
     void onDownloadFinished(QNetworkReply *reply);
     void onVSCodeDownloadFinished(QNetworkReply *reply); // 添加这行声明
