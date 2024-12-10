@@ -19,7 +19,7 @@ DeployTool 是一个基于 Qt 框架的桌面应用程序，旨在帮助用户�
 
 3. **编译和构建**：使用 Qt Creator 或命令行工具（如 qmake 和 make）编译和构建 DeployTool 项目。
    
-4. **直接运行**：或者下载package文件夹到本地，找到DeployTool.exe管理员运行即可,配置过程中不要修改默认路径哦
+4. **直接运行**：或者下载压缩包到本地解压，找到DeployTool.exe管理员运行即可,配置过程中不要修改默认路径哦
 
 ## 使用 DeployTool
 
